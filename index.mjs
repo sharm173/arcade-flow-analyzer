@@ -2,16 +2,16 @@ import dotenv from "dotenv";
 import { OpenAI } from "openai";
 import { readFile, writeFile } from "fs/promises";
 
-dotenv.config();
+ dotenv.config();
 
-if (!process.env.OPENAI_API_KEY) {
+ if (!process.env.OPENAI_API_KEY) {
     console.error("Missing OPENAI_API_KEY in .env");
     process.exit(1);
   }
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-async function parseFlowForReport(flowJsonString) {
+ async function parseFlowForReport(flowJsonString) {
 
     
     const sys = `You are a precise analyst. Read Arcade "flow.json" and return STRICT JSON only.`;
@@ -37,9 +37,7 @@ async function parseFlowForReport(flowJsonString) {
       temperature: 0.2,
     });
   
-    //return JSON.parse(resp.output_text.trim());
     return JSON.parse(resp.output_text.trim());
-    console.log({ interactions, summary, caption, image_prompt });
   }
 
   async function genImage(imagePrompt, outPath) {
@@ -60,12 +58,37 @@ async function parseFlowForReport(flowJsonString) {
     await writeFile(outPath, buf);
   }
 
+  function buildMarkdown(flowName, interactions, summary, caption) {
+    const lines = [];
+    lines.push(`# Arcade Flow Report — ${flowName || "Arcade Flow"}`);
+    lines.push(`\n---\n## 1) Human-Readable Interaction Log`);
+    interactions.forEach((s, i) => lines.push(`${i + 1}. ${s}`));
+    lines.push(`\n---\n## 2) Summary of User Intent\n${summary}`);
+    lines.push(`\n---\n## 3) Social Media Image\nSaved as \`social_image.png\`.`);
+    lines.push(`\n**Suggested caption:**\n> ${caption}`);
+    lines.push(`\n---\n## 4) Implementation Notes`);
+    lines.push(`- Generated with a single text LLM call and a single image call.`);
+    return lines.join("\n");
+  }
+
   async function main() {
     const flowRaw = await readFile('flow.json', "utf8");
+    const flow = JSON.parse(flowRaw);
+    const flowName = flow?.name || 'Arcade Flow';
+
     let { interactions, summary, caption, image_prompt } = await parseFlowForReport(flowRaw);
-    console.log({ interactions, summary, caption, image_prompt });
+
+    //Image
     let imagePath = 'social_image.png';
     await genImage(image_prompt, imagePath);
+
+    //Markdown
+    const mdPath = "arcade_flow_report.md";
+    const md = buildMarkdown(flowName, interactions, summary, caption);
+    await writeFile(mdPath, md, "utf8");
+
+    console.log(`✅ Wrote: ${mdPath}`);
+    console.log(`🖼️ Wrote: ${imagePath}`);
   }
 
   main();
