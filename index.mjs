@@ -1,6 +1,14 @@
 import dotenv from "dotenv";
 import { OpenAI } from "openai";
 import { readFile, writeFile } from "fs/promises";
+import {
+  getReportCachePath,
+  readReportFromCache,
+  writeReportToCache,
+  getImageCachePath,
+  readImageFromCache,
+  writeImageToCache,
+} from "./helpers/cache.mjs";
 
  dotenv.config();
 
@@ -15,8 +23,15 @@ import { readFile, writeFile } from "fs/promises";
  const IMAGE_MODEL = process.env.IMAGE_MODEL || "gpt-image-1"; // image gen  
 
  async function parseFlowForReport(flowJsonString) {
-
     
+    let cacheFile = await getReportCachePath(flowJsonString, TEXT_MODEL);
+    let cachedReport = await readReportFromCache(cacheFile);
+    
+  if (cachedReport) {
+    console.log("Using cached report");
+    return cachedReport;
+  }
+
     const sys = `You are a precise analyst. Read Arcade "flow.json" and return STRICT JSON only.`;
     const user = `
   Return JSON with this exact shape (no comments, no markdown fences):
@@ -40,10 +55,23 @@ import { readFile, writeFile } from "fs/promises";
       temperature: 0.2,
     });
   
-    return JSON.parse(resp.output_text.trim());
+    let parsedResponse =  JSON.parse(resp.output_text.trim());
+    writeReportToCache(cacheFile, parsedResponse);
+
+    return parsedResponse;
   }
 
   async function genImage(imagePrompt, outPath) {
+
+    let cacheFilePath = await getImageCachePath(imagePrompt, IMAGE_MODEL, "1024x1024");
+    let cachedImage = await readImageFromCache(cacheFilePath);
+
+  if (cachedImage) {
+    console.log("Using cached image");
+    await writeFile(outPath, cachedImage);
+    return;
+  }
+
     const img = await openai.images.generate({
       model: IMAGE_MODEL,
       prompt: [
@@ -56,9 +84,11 @@ import { readFile, writeFile } from "fs/promises";
       n: 1,
     });
   
-    const b64 = img.data[0].b64_json;
-    const buf = Buffer.from(b64, "base64");
-    await writeFile(outPath, buf);
+    const base64Image = img.data[0].b64_json;
+    const imageBuffer = Buffer.from(base64Image, "base64");
+
+    await writeFile(outPath, imageBuffer);
+    await writeImageToCache(cacheFilePath, imageBuffer);
   }
 
   function buildMarkdown(flowName, interactions, summary, caption) {
