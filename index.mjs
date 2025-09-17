@@ -11,6 +11,9 @@ import { readFile, writeFile } from "fs/promises";
 
  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
+ const TEXT_MODEL = process.env.TEXT_MODEL || "gpt-4o-mini";   // cheap+smart
+ const IMAGE_MODEL = process.env.IMAGE_MODEL || "gpt-image-1"; // image gen  
+
  async function parseFlowForReport(flowJsonString) {
 
     
@@ -32,7 +35,7 @@ import { readFile, writeFile } from "fs/promises";
   `.trim();
   
     const resp = await openai.responses.create({
-      model: "gpt-4o-mini",
+      model: TEXT_MODEL,
       input: [{ role: "system", content: sys }, { role: "user", content: user }],
       temperature: 0.2,
     });
@@ -42,7 +45,7 @@ import { readFile, writeFile } from "fs/promises";
 
   async function genImage(imagePrompt, outPath) {
     const img = await openai.images.generate({
-      model: "gpt-image-1",
+      model: IMAGE_MODEL,
       prompt: [
         "Professional 1200x630 social image summarizing an e-commerce user flow.",
         "Avoid real brand logos; use clean UI motifs (search, product card, color swatches, add-to-cart).",
