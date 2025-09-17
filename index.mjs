@@ -8,7 +8,9 @@ import {
   getImageCachePath,
   readImageFromCache,
   writeImageToCache,
+  ensureDir,
 } from "./helpers/cache.mjs";
+import path from "path";
 
  dotenv.config();
 
@@ -21,6 +23,8 @@ import {
 
  const TEXT_MODEL = process.env.TEXT_MODEL || "gpt-4o-mini";   // cheap+smart
  const IMAGE_MODEL = process.env.IMAGE_MODEL || "gpt-image-1"; // image gen  
+
+ const [IN_PATH = "flow.json", OUT_DIR = "reports"] = process.argv.slice(2);
 
  async function parseFlowForReport(flowJsonString) {
     
@@ -105,18 +109,20 @@ import {
   }
 
   async function main() {
-    const flowRaw = await readFile('flow.json', "utf8");
+    const flowRaw = await readFile(IN_PATH, "utf8");
     const flow = JSON.parse(flowRaw);
     const flowName = flow?.name || 'Arcade Flow';
 
     let { interactions, summary, caption, image_prompt } = await parseFlowForReport(flowRaw);
 
+    await ensureDir(OUT_DIR);
+
     //Image
-    let imagePath = 'social_image.png';
+    const imagePath = path.join(OUT_DIR, "social_image.png");
     await genImage(image_prompt, imagePath);
 
     //Markdown
-    const mdPath = "arcade_flow_report.md";
+    const mdPath = path.join(OUT_DIR, "arcade_flow_report.md");
     const md = buildMarkdown(flowName, interactions, summary, caption);
     await writeFile(mdPath, md, "utf8");
 
