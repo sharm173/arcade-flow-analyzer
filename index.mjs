@@ -11,7 +11,7 @@ if (!process.env.OPENAI_API_KEY) {
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-async function extractFile(flowJsonString) {
+async function parseFlowForReport(flowJsonString) {
 
     
     const sys = `You are a precise analyst. Read Arcade "flow.json" and return STRICT JSON only.`;
@@ -62,7 +62,7 @@ async function extractFile(flowJsonString) {
 
   async function main() {
     const flowRaw = await readFile('flow.json', "utf8");
-    let { interactions, summary, caption, image_prompt } = await extractFile(flowRaw);
+    let { interactions, summary, caption, image_prompt } = await parseFlowForReport(flowRaw);
     console.log({ interactions, summary, caption, image_prompt });
     let imagePath = 'social_image.png';
     await genImage(image_prompt, imagePath);
